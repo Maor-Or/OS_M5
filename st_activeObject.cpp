@@ -1,4 +1,4 @@
-#include<iostream>
+#include <iostream>
 
 #include "st_activeObject.hpp"
 
@@ -17,19 +17,18 @@ void *threadFunction(void *p_ao);
 
 PActiveObject CreateActiveObject(func p_func)
 {
-    printf("got func: %p\n", p_func);
-
     // allocationg the Active object:
     PActiveObject p_ao = (PActiveObject)calloc(1, sizeof(ActiveObject));
 
     // allocating the Active object's attributes:
     // inintilizing the func pointer:
     p_ao->ao_func = p_func;
-    printf("saved func: %p\n", p_ao->ao_func);
 
     // queue:
     p_ao->ao_p_stq = (PST_Queue)calloc(1, sizeof(ST_Queue)); // struct
     p_ao->ao_p_stq->p_queue = new queue<void *>();           // nested queue in struct
+    pthread_cond_init(&(p_ao->ao_p_stq->cond), NULL);
+    pthread_mutex_init(&(p_ao->ao_p_stq->mutex), NULL);
 
     // thread:
     p_ao->isStopThread = 0;
@@ -39,7 +38,6 @@ PActiveObject CreateActiveObject(func p_func)
         printf("Failed to create thread.\n");
         exit(1);
     }
-
     return p_ao;
 }
 
@@ -58,6 +56,8 @@ void stop(PActiveObject p_ao)
     struct ActiveObject_ *p_ao2 = (PActiveObject)p_ao;
     p_ao2->isStopThread = 1;
     pthread_join(p_ao2->ao_thread, NULL);
+    pthread_cond_destroy(&(p_ao->ao_p_stq->cond));
+    pthread_mutex_destroy(&(p_ao->ao_p_stq->mutex));
     delete p_ao2->ao_p_stq->p_queue;
     free(p_ao2->ao_p_stq);
     free(p_ao2);
@@ -66,32 +66,20 @@ void stop(PActiveObject p_ao)
 // Function to be executed in the thread
 void *threadFunction(void *p_ao)
 {
-    printf("in thread func\n");
     struct ActiveObject_ *p_ao2 = (PActiveObject)p_ao;
     void *task;
 
-task = p_ao2->ao_p_stq->p_queue->front();
-
-
-    unsigned int* value2 =reinterpret_cast<unsigned int*>(task);
-    
-    cout << "task : "<< *(value2) << endl;
-
-    while (1)
+    if (p_ao2->isStopThread == 1)
     {
-        if (p_ao2->isStopThread == 1)
-        {
-            return nullptr;
-        }
-        // printf("in first while \n");
-        // going through the tasks in the queue:
-        while ((task = p_ao2->ao_p_stq->p_queue->front()))
-        {
-            printf("calling func: %p\n",p_ao2->ao_func);
-            p_ao2->ao_func(task);
-            
-
-        }
+        return nullptr;
     }
+
+    // going through the tasks in the queue:
+    while ((p_ao2->isStopThread) == 0 &&
+           (task = p_ao2->ao_p_stq->dequeue()) != nullptr)
+    {
+        p_ao2->ao_func(task);
+    }
+
     return nullptr;
 }
