@@ -11,9 +11,7 @@ running program: ./st_pipeline <N> (optional: )<seed>
 while N is the amount of numbers, and seed is a random seed to genarate
 example (1): ./st_pipeline 2
 example (2): ./st_pipeline 2 123123123
-afterwards, the clients connect to the server and the reactor object is collecting the clients' fds, 
-and messages can be sent to the server from all client "in parallel".
+afterwards, the program should run the AO's as expected.
 
-To shut down the server/ any connected client - cntl+c
-
+no need to shut down anything by hand, the program will shut down by itself.
 see ex_screenshot for example
